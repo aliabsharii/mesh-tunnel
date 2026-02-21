@@ -1,3 +1,8 @@
+# tinc-mesh.sh
+
+🌍 Languages:  
+English | [فارسی](README-fa.md)
+
 Minimal & Fast Tinc Mesh Tunnel Script
 Build a private mesh network between your servers — without any panel
 
