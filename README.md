@@ -48,7 +48,8 @@ Remote servers install dependencies automatically.
 
 Installation
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/tinc-mesh.sh)
+wget -O tinc-mesh.sh https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/tinc-mesh.sh
+chmod +x tinc-mesh.sh
 ```
 
 Step 1 — Initialize Main Server
