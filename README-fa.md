@@ -51,7 +51,8 @@ apt install -y tinc iproute2 net-tools sshpass
 
 نصب
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/tinc-mesh.sh)
+wget -O tinc-mesh.sh https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/tinc-mesh.sh
+chmod +x tinc-mesh.sh
 ```
 مرحله ۱ — راه‌اندازی سرور اصلی
 
