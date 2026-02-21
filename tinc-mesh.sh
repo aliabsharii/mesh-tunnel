@@ -21,7 +21,7 @@ need bash; need ip; need systemctl; need tincd; need ssh; need scp; need sed; ne
 HAS_SSHPASS=0
 if command -v sshpass >/dev/null 2>&1; then HAS_SSHPASS=1; fi
 
-ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10)
+ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o PreferredAuthentications=password -o PubkeyAuthentication=no)
 
 usage(){
   cat <<USAGE
