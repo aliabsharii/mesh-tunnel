@@ -43,8 +43,7 @@ Remote servers install dependencies automatically.
 
 Installation
 ```bash
-wget -O mesh-tunnel.sh https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/mesh-tunnel.sh
-chmod +x mesh-tunnel.sh
+bash <(wget -qO- https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/tinc-mesh.sh)
 ```
 
 Step 1 — Initialize Main Server
