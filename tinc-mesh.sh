@@ -24,6 +24,8 @@ if command -v sshpass >/dev/null 2>&1; then HAS_SSHPASS=1; fi
 ssh_opts=(
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
+  -o GlobalKnownHostsFile=/dev/null
+  -o LogLevel=ERROR
   -o ConnectTimeout=10
   -o PreferredAuthentications=password
   -o PubkeyAuthentication=no
@@ -126,8 +128,8 @@ write_tinc_up(){
   # IMPORTANT: quoted heredoc to avoid expanding \$INTERFACE in this script (set -u)
   cat >"$(net_dir "$net")/tinc-up" <<'UP'
 #!/bin/sh
-/sbin/ifconfig $INTERFACE __PRIV__ netmask __MASK__
-/sbin/ip link set dev $INTERFACE mtu __MTU__ || true
+/sbin/ifconfig \$INTERFACE __PRIV__ netmask __MASK__
+/sbin/ip link set dev \$INTERFACE mtu __MTU__ || true
 UP
   # substitute placeholders
   sed -i \
@@ -140,7 +142,7 @@ UP
 
   cat >"$(net_dir "$net")/tinc-down" <<'DOWN'
 #!/bin/sh
-/sbin/ifconfig $INTERFACE down
+/sbin/ifconfig \$INTERFACE down
 DOWN
   chmod +x "$(net_dir "$net")/tinc-down"
 }
@@ -251,7 +253,10 @@ push_hosts_to_all(){
 
     pass="${MESH_SSH_PASS:-}"
     if [[ -z "$pass" ]]; then
+      pass="${MESH_SSH_PASS:-}"
+    if [[ -z "$pass" ]]; then
       pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
+    fi
     fi
 
     remote_scp_pass "$pass" -r "$hdir"/* "${ssh_user}@${pub}:$hdir/" >/dev/null
@@ -298,7 +303,10 @@ case "${cmd}" in
     [[ -n "$net" && -n "$pub" ]] || { usage; exit 1; }
     [[ -d "$(net_dir "$net")" ]] || die "Network not initialized locally. Run init first."
 
-    pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
+    pass="${MESH_SSH_PASS:-}"
+    if [[ -z "$pass" ]]; then
+      pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
+    fi
 
     if [[ -z "$name" ]]; then
       raw="$(remote_run_pass "$ssh_user" "$pub" "$pass" "hostname -s 2>/dev/null || hostname 2>/dev/null || echo node" | tail -n1)"
@@ -313,6 +321,8 @@ case "${cmd}" in
     fi
 
     # proceed
+    export MESH_SSH_PASS="$pass"
+
     "$0" add --net "$net" --name "$name" --pub "$pub" --priv "$priv" --ssh-user "$ssh_user" --port "$port" --mtu "$mtu"
     ;;
 
@@ -326,7 +336,10 @@ case "${cmd}" in
 
     [[ -d "$(net_dir "$net")" ]] || die "Network not initialized locally. Run init first."
     [[ -d "$(hosts_dir "$net")" ]] || die "Missing hosts dir locally."
-    pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
+    pass="${MESH_SSH_PASS:-}"
+    if [[ -z "$pass" ]]; then
+      pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
+    fi
 
     main_name="$(get_main_name "$net")"
     netmask="$(get_netmask "$net")"; [[ -n "$netmask" ]] || netmask="255.255.255.0"
@@ -360,15 +373,15 @@ CONF
 
 sudo tee /etc/tinc/$net/tinc-up >/dev/null <<'UP'
 #!/bin/sh
-/sbin/ifconfig $INTERFACE __PRIV__ netmask __MASK__
-/sbin/ip link set dev $INTERFACE mtu __MTU__ || true
+/sbin/ifconfig \$INTERFACE __PRIV__ netmask __MASK__
+/sbin/ip link set dev \$INTERFACE mtu __MTU__ || true
 UP
 sudo sed -i -e "s/__PRIV__/${priv}/g" -e "s/__MASK__/${netmask}/g" -e "s/__MTU__/${mtu}/g" /etc/tinc/$net/tinc-up
 sudo chmod +x /etc/tinc/$net/tinc-up
 
 sudo tee /etc/tinc/$net/tinc-down >/dev/null <<'DOWN'
 #!/bin/sh
-/sbin/ifconfig $INTERFACE down
+/sbin/ifconfig \$INTERFACE down
 DOWN
 sudo chmod +x /etc/tinc/$net/tinc-down
 
@@ -411,7 +424,10 @@ RS
     [[ "$auth_type" != "local" ]] || die "Refusing to delete local/main node."
 
     pass="${MESH_SSH_PASS:-}"
-    [[ -n "$pass" ]] || pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
+    [[ -n "$pass" ]] || pass="${MESH_SSH_PASS:-}"
+    if [[ -z "$pass" ]]; then
+      pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
+    fi
 
     echo "-> Removing $name (pub=$pub priv=$priv)"
     remote_run_pass "$ssh_user" "$pub" "$pass" "sudo systemctl stop tinc@${net} || true; sudo systemctl disable tinc@${net} || true; sudo rm -rf /etc/tinc/${net} || true" >/dev/null || true
