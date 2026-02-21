@@ -49,15 +49,15 @@ bash <(wget -qO- https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/
 Step 1 — Initialize Main Server
 
 Run on your MAIN server:
-
+```bash
 sudo ./tinc-mesh.sh init --net ali --name iranserver --pub YOUR_MAIN_PUBLIC_IP --priv 10.20.0.1 --mask 255.255.255.0
-
+```
 Step 2 — Add New Server
 
 Only need public IP:
-
+```bash
 sudo ./tinc-mesh.sh addq --net ali --pub NODE_PUBLIC_IP
-
+```
 Script will:
 
 Ask SSH password
@@ -68,21 +68,21 @@ Connect to mesh
 Sync with all nodes
 
 Optional:
-
+```bash
 sudo ./tinc-mesh.sh addq --net ali --pub NODE_PUBLIC_IP --ssh-user root
-
+```
 List Nodes
-
+```bash
 sudo ./tinc-mesh.sh list --net ali
-
+```
 Re-sync Mesh
-
+```bash
 sudo ./tinc-mesh.sh push --net ali
-
+```
 Remove Node
-
+```bash
 sudo ./tinc-mesh.sh del --net ali --name NODE_NAME
-
+```
 This removes the node from:
 
 Mesh
@@ -90,9 +90,9 @@ All configs
 Remote server
 
 Restart Network
-
+```bash
 sudo ./tinc-mesh.sh restart --net ali
-
+```
 Firewall
 
 Open port on ALL servers:
