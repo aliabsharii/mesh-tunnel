@@ -43,17 +43,23 @@ sshpass
 پکیج‌های لازم روی سرورهای ریموت به صورت خودکار نصب می‌شوند.
 
 نصب
+```bash
 bash <(wget -qO- https://raw.githubusercontent.com/aliabsharii/mesh-tunnel/main/tinc-mesh.sh)
+```
 مرحله ۱ — راه‌اندازی سرور اصلی
 
 روی سرور اصلی اجرا کنید:
 
+```bash
 sudo ./tinc-mesh.sh init --net ali --name iranserver --pub YOUR_MAIN_PUBLIC_IP --priv 10.20.0.1 --mask 255.255.255.0
+```
 مرحله ۲ — اضافه کردن سرور جدید
 
 فقط آی‌پی عمومی را وارد کنید:
 
+```bash
 sudo ./tinc-mesh.sh addq --net ali --pub NODE_PUBLIC_IP
+```
 
 اسکریپت:
 
@@ -66,13 +72,21 @@ Tinc را روی سرور ریموت نصب می‌کند
 
 اختیاری:
 
+```bash
 sudo ./tinc-mesh.sh addq --net ali --pub NODE_PUBLIC_IP --ssh-user root
+```
 مشاهده لیست نودها
+```bash
 sudo ./tinc-mesh.sh list --net ali
+```
 سینک مجدد شبکه
+```bash
 sudo ./tinc-mesh.sh push --net ali
+```
 حذف نود
+```bash
 sudo ./tinc-mesh.sh del --net ali --name NODE_NAME
+```
 
 این کار باعث می‌شود:
 
@@ -81,14 +95,16 @@ sudo ./tinc-mesh.sh del --net ali --name NODE_NAME
 و Tinc از سرور ریموت حذف گردد
 
 ریستارت شبکه
+```bash
 sudo ./tinc-mesh.sh restart --net ali
+```
 فایروال
 
 این پورت را روی همه سرورها باز کنید:
-
+```bash
 ufw allow 655/udp
 ufw allow 655/tcp
-
+```
 فایل وضعیت
 
 اطلاعات شبکه اینجا ذخیره می‌شود:
