@@ -21,7 +21,13 @@ need bash; need ip; need systemctl; need tincd; need ssh; need scp; need sed; ne
 HAS_SSHPASS=0
 if command -v sshpass >/dev/null 2>&1; then HAS_SSHPASS=1; fi
 
-ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o PreferredAuthentications=password -o PubkeyAuthentication=no)
+ssh_opts=(
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o ConnectTimeout=10
+  -o PreferredAuthentications=password
+  -o PubkeyAuthentication=no
+)
 
 usage(){
   cat <<USAGE
@@ -65,7 +71,6 @@ getarg(){
 net_dir(){ echo "/etc/tinc/$1"; }
 hosts_dir(){ echo "/etc/tinc/$1/hosts"; }
 nodes_file(){ echo "$STATE_DIR/$1.nodes"; } # name|pub|priv|ssh_user|auth_type|auth_value|port|mtu
-# auth_value is "-" by default (password not stored)
 
 ensure_pkgs_local(){
   export DEBIAN_FRONTEND=noninteractive
@@ -89,6 +94,7 @@ remote_run_pass(){
   [[ $HAS_SSHPASS -eq 1 ]] || die "sshpass not installed. Install it: apt-get install -y sshpass"
   sshpass -p "$pass" ssh "${ssh_opts[@]}" "$user@$ipaddr" "bash -s" <<<"$script"
 }
+
 remote_scp_pass(){
   local pass="$1"; shift
   [[ $HAS_SSHPASS -eq 1 ]] || die "sshpass not installed. Install it: apt-get install -y sshpass"
@@ -116,12 +122,22 @@ CONF
 
 write_tinc_up(){
   local net="$1" priv="$2" mask="$3" mtu="$4"
-  cat >"$(net_dir "$net")/tinc-up" <<UP
+
+  # IMPORTANT: quoted heredoc to avoid expanding \$INTERFACE in this script (set -u)
+  cat >"$(net_dir "$net")/tinc-up" <<'UP'
 #!/bin/sh
-/sbin/ifconfig \$INTERFACE $priv netmask $mask
-/sbin/ip link set dev \$INTERFACE mtu $mtu || true
+/sbin/ifconfig $INTERFACE __PRIV__ netmask __MASK__
+/sbin/ip link set dev $INTERFACE mtu __MTU__ || true
 UP
+  # substitute placeholders
+  sed -i \
+    -e "s/__PRIV__/${priv}/g" \
+    -e "s/__MASK__/${mask}/g" \
+    -e "s/__MTU__/${mtu}/g" \
+    "$(net_dir "$net")/tinc-up"
+
   chmod +x "$(net_dir "$net")/tinc-up"
+
   cat >"$(net_dir "$net")/tinc-down" <<'DOWN'
 #!/bin/sh
 /sbin/ifconfig $INTERFACE down
@@ -232,11 +248,12 @@ push_hosts_to_all(){
   while IFS='|' read -r name pub priv ssh_user auth_type auth_val port mtu; do
     [[ "$auth_type" == "local" ]] && continue
     echo "-> Sync hosts to $name ($pub)"
-    # password not stored: ask each time unless user exported MESH_SSH_PASS
+
     pass="${MESH_SSH_PASS:-}"
     if [[ -z "$pass" ]]; then
       pass="$(prompt_pass "SSH password for ${ssh_user}@${pub}: ")"
     fi
+
     remote_scp_pass "$pass" -r "$hdir"/* "${ssh_user}@${pub}:$hdir/" >/dev/null
     remote_run_pass "$ssh_user" "$pub" "$pass" "sudo pkill -HUP -f 'tincd -n $net' || true" >/dev/null
   done <"$f"
@@ -296,7 +313,7 @@ case "${cmd}" in
     fi
 
     # proceed
-    "$0" add --net "$net" --name "$name" --pub "$pub" --priv "$priv" --ssh-user "$ssh_user" --port "$port" --mtu "$mtu" <<<"$pass"
+    "$0" add --net "$net" --name "$name" --pub "$pub" --priv "$priv" --ssh-user "$ssh_user" --port "$port" --mtu "$mtu"
     ;;
 
   add)
@@ -341,11 +358,12 @@ PingInterval = $PING_INTERVAL
 PingTimeout  = $PING_TIMEOUT
 CONF
 
-sudo tee /etc/tinc/$net/tinc-up >/dev/null <<UP
+sudo tee /etc/tinc/$net/tinc-up >/dev/null <<'UP'
 #!/bin/sh
-/sbin/ifconfig \\$INTERFACE $priv netmask $netmask
-/sbin/ip link set dev \\$INTERFACE mtu $mtu || true
+/sbin/ifconfig $INTERFACE __PRIV__ netmask __MASK__
+/sbin/ip link set dev $INTERFACE mtu __MTU__ || true
 UP
+sudo sed -i -e "s/__PRIV__/${priv}/g" -e "s/__MASK__/${netmask}/g" -e "s/__MTU__/${mtu}/g" /etc/tinc/$net/tinc-up
 sudo chmod +x /etc/tinc/$net/tinc-up
 
 sudo tee /etc/tinc/$net/tinc-down >/dev/null <<'DOWN'
@@ -376,7 +394,6 @@ RS
 
     save_node "$net" "$name" "$pub" "$priv" "$ssh_user" "pass" "-" "$port" "$mtu"
 
-    # you can export MESH_SSH_PASS=... if all nodes share same root password (optional)
     export MESH_SSH_PASS="${MESH_SSH_PASS:-$pass}"
     push_hosts_to_all "$net"
 
@@ -400,7 +417,6 @@ RS
     remote_run_pass "$ssh_user" "$pub" "$pass" "sudo systemctl stop tinc@${net} || true; sudo systemctl disable tinc@${net} || true; sudo rm -rf /etc/tinc/${net} || true" >/dev/null || true
     rm -f "$(hosts_dir "$net")/$name" || true
 
-    # Remove host file from other nodes
     f="$(nodes_file "$net")"
     if [[ -f "$f" ]]; then
       while IFS='|' read -r oname opub opriv ossh oauthtype oauthval oport omtu; do
