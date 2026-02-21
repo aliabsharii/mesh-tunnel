@@ -78,9 +78,10 @@ ensure_pkgs_local(){
 prompt_pass(){
   local prompt="${1:-SSH Password: }"
   local p
-  read -r -s -p "$prompt" p; echo
+  read -r -s -p "$prompt" p
+  printf '\n' >&2
   [[ -n "$p" ]] || die "Empty password."
-  echo "$p"
+  printf '%s' "$p"
 }
 
 remote_run_pass(){
